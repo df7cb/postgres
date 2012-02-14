@@ -132,6 +132,8 @@ typedef struct printTableContent
 	char	   *aligns;			/* Array of alignment specifiers; 'l' or 'r',
 								 * one per column */
 	char	   *align;			/* Pointer to the last added alignment */
+	int			output_columns; /* In \x mode, width of terminal for the */
+								/* header line */
 } printTableContent;
 
 typedef struct printQueryOpt
@@ -170,7 +172,7 @@ extern void printTableAddFooter(printTableContent *const content,
 extern void printTableSetFooter(printTableContent *const content,
 					const char *footer);
 extern void printTableCleanup(printTableContent *const content);
-extern void printTable(const printTableContent *cont, FILE *fout, FILE *flog);
+extern void printTable(printTableContent *cont, FILE *fout, FILE *flog);
 extern void printQuery(const PGresult *result, const printQueryOpt *opt,
 		   FILE *fout, FILE *flog);
 

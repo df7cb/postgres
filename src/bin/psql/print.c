@@ -125,7 +125,7 @@ static int	strlen_max_width(unsigned char *str, int *target_width, int encoding)
 static void IsPagerNeeded(const printTableContent *cont, const int extra_lines, bool expanded,
 			  FILE **fout, bool *is_pager);
 
-static void print_aligned_vertical(const printTableContent *cont, FILE *fout);
+static void print_aligned_vertical(printTableContent *cont, FILE *fout);
 
 
 static void *
@@ -491,7 +491,7 @@ _print_horizontal_line(const unsigned int ncolumns, const unsigned int *widths,
  *	Print pretty boxes around cells.
  */
 static void
-print_aligned_text(const printTableContent *cont, FILE *fout)
+print_aligned_text(printTableContent *cont, FILE *fout)
 {
 	bool		opt_tuples_only = cont->opt->tuples_only;
 	int			encoding = cont->opt->encoding;
@@ -525,7 +525,6 @@ print_aligned_text(const printTableContent *cont, FILE *fout)
 	bool	   *header_done;	/* Have all header lines been output? */
 	int		   *bytes_output;	/* Bytes output for column value */
 	printTextLineWrap *wrap;	/* Wrap status for each column */
-	int			output_columns = 0;		/* Width of interactive console */
 	bool		is_pager = false;
 
 	if (cancel_pressed)
@@ -660,18 +659,18 @@ print_aligned_text(const printTableContent *cont, FILE *fout)
 	 * Choose target output width: \pset columns, or $COLUMNS, or ioctl
 	 */
 	if (cont->opt->columns > 0)
-		output_columns = cont->opt->columns;
+		cont->output_columns = cont->opt->columns;
 	else if ((fout == stdout && isatty(fileno(stdout))) || is_pager)
 	{
 		if (cont->opt->env_columns > 0)
-			output_columns = cont->opt->env_columns;
+			cont->output_columns = cont->opt->env_columns;
 #ifdef TIOCGWINSZ
 		else
 		{
 			struct winsize screen_size;
 
 			if (ioctl(fileno(stdout), TIOCGWINSZ, &screen_size) != -1)
-				output_columns = screen_size.ws_col;
+				cont->output_columns = screen_size.ws_col;
 		}
 #endif
 	}
@@ -685,10 +684,10 @@ print_aligned_text(const printTableContent *cont, FILE *fout)
 		 * positive...	and greater than the width of the unshrinkable column
 		 * headers
 		 */
-		if (output_columns > 0 && output_columns >= total_header_width)
+		if (cont->output_columns > 0 && cont->output_columns >= total_header_width)
 		{
 			/* While there is still excess width... */
-			while (width_total > output_columns)
+			while (width_total > cont->output_columns)
 			{
 				double		max_ratio = 0;
 				int			worst_col = -1;
@@ -731,16 +730,16 @@ print_aligned_text(const printTableContent *cont, FILE *fout)
 	 * If in expanded auto mode, we have now calculated the expected width, so
 	 * we can now escape to vertical mode if necessary.
 	 */
-	if (cont->opt->expanded == 2 && output_columns > 0 &&
-		(output_columns < total_header_width || output_columns < width_total))
+	if (cont->opt->expanded == 2 && cont->output_columns > 0 &&
+		(cont->output_columns < total_header_width || cont->output_columns < width_total))
 	{
 		print_aligned_vertical(cont, fout);
 		return;
 	}
 
 	/* If we wrapped beyond the display width, use the pager */
-	if (!is_pager && fout == stdout && output_columns > 0 &&
-		(output_columns < total_header_width || output_columns < width_total))
+	if (!is_pager && fout == stdout && cont->output_columns > 0 &&
+		(cont->output_columns < total_header_width || cont->output_columns < width_total))
 	{
 		fout = PageOutput(INT_MAX, cont->opt->pager);	/* force pager */
 		is_pager = true;
@@ -1087,6 +1086,7 @@ print_aligned_vertical_line(const printTableContent *cont,
 	unsigned short opt_border = cont->opt->border;
 	unsigned int i;
 	int			reclen = 0;
+	int			hrule_end;
 
 	if (opt_border == 2)
 		fprintf(fout, "%s%s", lformat->leftvrule, lformat->hrule);
@@ -1124,15 +1124,16 @@ print_aligned_vertical_line(const printTableContent *cont,
 	}
 	if (reclen < 0)
 		reclen = 0;
-	for (i = reclen; i < dwidth; i++)
+	hrule_end = cont->output_columns - hwidth - 2 - strlen(lformat->rightvrule);
+	for (i = reclen; i < dwidth && i < hrule_end; i++)
 		fputs(opt_border > 0 ? lformat->hrule : " ", fout);
-	if (opt_border == 2)
+	if (opt_border == 2 && i < hrule_end)
 		fprintf(fout, "%s%s", lformat->hrule, lformat->rightvrule);
 	fputc('\n', fout);
 }
 
 static void
-print_aligned_vertical(const printTableContent *cont, FILE *fout)
+print_aligned_vertical(printTableContent *cont, FILE *fout)
 {
 	bool		opt_tuples_only = cont->opt->tuples_only;
 	unsigned short opt_border = cont->opt->border;
@@ -1171,6 +1172,26 @@ print_aligned_vertical(const printTableContent *cont, FILE *fout)
 	 * to recalcuate the pager requirement based on vertical output.
 	 */
 	IsPagerNeeded(cont, 0, true, &fout, &is_pager);
+
+	/*
+	 * Choose target output width: \pset columns, or $COLUMNS, or ioctl
+	 */
+	if (cont->opt->columns > 0)
+		cont->output_columns = cont->opt->columns;
+	else if ((fout == stdout && isatty(fileno(stdout))) || is_pager)
+	{
+		if (cont->opt->env_columns > 0)
+			cont->output_columns = cont->opt->env_columns;
+#ifdef TIOCGWINSZ
+		else
+		{
+			struct winsize screen_size;
+
+			if (ioctl(fileno(stdout), TIOCGWINSZ, &screen_size) != -1)
+				cont->output_columns = screen_size.ws_col;
+		}
+#endif
+	}
 
 	/* Find the maximum dimensions for the headers */
 	for (i = 0; i < cont->ncolumns; i++)
@@ -2106,6 +2127,7 @@ printTableInit(printTableContent *const content, const printTableOpt *opt,
 	content->footer = content->footers;
 	content->align = content->aligns;
 	content->cellsadded = 0;
+	content->output_columns = 0; /* will be initialized once is_pager is known */
 }
 
 /*
@@ -2336,7 +2358,7 @@ IsPagerNeeded(const printTableContent *cont, const int extra_lines, bool expande
  * Use this to print just any table in the supported formats.
  */
 void
-printTable(const printTableContent *cont, FILE *fout, FILE *flog)
+printTable(printTableContent *cont, FILE *fout, FILE *flog)
 {
 	bool		is_pager = false;
 
