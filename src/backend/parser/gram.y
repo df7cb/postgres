@@ -11310,7 +11310,7 @@ table_ref:	relation_expr opt_alias_clause
 					 *
 					 * To provide an unique alias, we use the parsed location
 					 * of the subquery to form an alias , e.g. in the format
-					 * *SUBQUERY*<location>
+					 * *SUBQUERY_<location>*
 					 */
 					if ($2 == NULL)
 					{

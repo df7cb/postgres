@@ -408,8 +408,7 @@ TABLE [ ONLY ] <replaceable class="parameter">table_name</replaceable> [ * ]
         output were created as a temporary table for the duration of
         this single <command>SELECT</command> command.  Note that the
         sub-<command>SELECT</command> must be surrounded by
-        parentheses. An optional alias can be
-        provided for it, though it is usually recommended. A
+        parentheses.  An optional alias can be used to name the subquery.  A
         <xref linkend="sql-values"> command
         can also be used here.
        </para>
@@ -1822,31 +1821,6 @@ FROM manufacturers m LEFT JOIN LATERAL get_product_names(m.id) pname ON true;
   </para>
 
   <refsect2>
-   <title>Optional subquery alias names in <literal>FROM</literal> clauses</title>
-
-   <para>
-    <productname>PostgreSQL</productname> allows to omit
-    alias names for subqueries used in <literal>FROM</literal>-clauses, which
-    the SQL standard mandates. Thus, the following SQL is valid in PostgreSQL:
-<programlisting>
-SELECT * FROM (VALUES(1), (2), (3));
- column1 
----------
-       1
-       2
-       3
-(3 rows)
-
-SELECT * FROM (SELECT 1);
- ?column? | ?column? | ?column? 
-----------+----------+----------
-        1 |        2 |        3
-(1 row)
-</programlisting>
-   </para>
-  </refsect2>
-  
-  <refsect2>
    <title>Omitted <literal>FROM</literal> Clauses</title>
 
    <para>
@@ -1912,6 +1886,31 @@ SELECT distributors.* WHERE distributors.name = 'Westward';
     be omitted before an alias that is an unreserved keyword.  But
     this is impractical for output column names, because of syntactic
     ambiguities.
+   </para>
+  </refsect2>
+
+  <refsect2>
+   <title>Optional subquery alias names in <literal>FROM</literal> clauses</title>
+
+   <para>
+    <productname>PostgreSQL</productname> allows one to omit
+    alias names for subqueries used in <literal>FROM</literal>-clauses, which
+    are required in the SQL standard. Thus, the following SQL is valid in PostgreSQL:
+<programlisting>
+SELECT * FROM (VALUES(1), (2), (3));
+ column1 
+---------
+       1
+       2
+       3
+(3 rows)
+
+SELECT * FROM (SELECT 1, 2, 3);
+ ?column? | ?column? | ?column? 
+----------+----------+----------
+        1 |        2 |        3
+(1 row)
+</programlisting>
    </para>
   </refsect2>
 
