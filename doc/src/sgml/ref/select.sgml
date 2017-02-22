@@ -51,7 +51,7 @@ SELECT [ ALL | DISTINCT [ ON ( <replaceable class="parameter">expression</replac
 
     [ ONLY ] <replaceable class="parameter">table_name</replaceable> [ * ] [ [ AS ] <replaceable class="parameter">alias</replaceable> [ ( <replaceable class="parameter">column_alias</replaceable> [, ...] ) ] ]
                 [ TABLESAMPLE <replaceable class="parameter">sampling_method</replaceable> ( <replaceable class="parameter">argument</replaceable> [, ...] ) [ REPEATABLE ( <replaceable class="parameter">seed</replaceable> ) ] ]
-    [ LATERAL ] ( <replaceable class="parameter">select</replaceable> ) [ AS ] <replaceable class="parameter">alias</replaceable> [ ( <replaceable class="parameter">column_alias</replaceable> [, ...] ) ]
+    [ LATERAL ] ( <replaceable class="parameter">select</replaceable> ) [ [ AS ] <replaceable class="parameter">alias</replaceable> [ ( <replaceable class="parameter">column_alias</replaceable> [, ...] ) ] ]
     <replaceable class="parameter">with_query_name</replaceable> [ [ AS ] <replaceable class="parameter">alias</replaceable> [ ( <replaceable class="parameter">column_alias</replaceable> [, ...] ) ] ]
     [ LATERAL ] <replaceable class="parameter">function_name</replaceable> ( [ <replaceable class="parameter">argument</replaceable> [, ...] ] )
                 [ WITH ORDINALITY ] [ [ AS ] <replaceable class="parameter">alias</replaceable> [ ( <replaceable class="parameter">column_alias</replaceable> [, ...] ) ] ]
@@ -408,8 +408,8 @@ TABLE [ ONLY ] <replaceable class="parameter">table_name</replaceable> [ * ]
         output were created as a temporary table for the duration of
         this single <command>SELECT</command> command.  Note that the
         sub-<command>SELECT</command> must be surrounded by
-        parentheses, and an alias <emphasis>must</emphasis> be
-        provided for it.  A
+        parentheses. An optional alias can be
+        provided for it, though it is usually recommended. A
         <xref linkend="sql-values"> command
         can also be used here.
        </para>
@@ -1821,6 +1821,31 @@ FROM manufacturers m LEFT JOIN LATERAL get_product_names(m.id) pname ON true;
    missing features.
   </para>
 
+  <refsect2>
+   <title>Optional subquery alias names in <literal>FROM</literal> clauses</title>
+
+   <para>
+    <productname>PostgreSQL</productname> allows to omit
+    alias names for subqueries used in <literal>FROM</literal>-clauses, which
+    the SQL standard mandates. Thus, the following SQL is valid in PostgreSQL:
+<programlisting>
+SELECT * FROM (VALUES(1), (2), (3));
+ column1 
+---------
+       1
+       2
+       3
+(3 rows)
+
+SELECT * FROM (SELECT 1);
+ ?column? | ?column? | ?column? 
+----------+----------+----------
+        1 |        2 |        3
+(1 row)
+</programlisting>
+   </para>
+  </refsect2>
+  
   <refsect2>
    <title>Omitted <literal>FROM</literal> Clauses</title>
 

@@ -456,6 +456,13 @@ select foo from (select 'xyzzy',1,null) as foo;
  (xyzzy,1,)
 (1 row)
 
+-- same above, without explicit alias
+select * from (select 'xyzzy',1,null);
+ ?column? | ?column? | ?column? 
+----------+----------+----------
+ xyzzy    |        1 | 
+(1 row)
+
 --
 -- Test VALUES lists
 --
@@ -489,6 +496,16 @@ select * from onek
       20 |     306 |   0 |    0 |   0 |      0 |       0 |       20 |          20 |        20 |       20 |   0 |    1 | UAAAAA   | ULAAAA   | OOOOxx
       99 |     101 |   1 |    3 |   9 |     19 |       9 |       99 |          99 |        99 |       99 |  18 |   19 | VDAAAA   | XDAAAA   | HHHHxx
 (3 rows)
+
+-- try VALUES without an explicit alias
+select * from (values (1,1), (20,0), (99,9), (17,99));
+ column1 | column2 
+---------+---------
+       1 |       1
+      20 |       0
+      99 |       9
+      17 |      99
+(4 rows)
 
 -- VALUES is also legal as a standalone query or a set-operation member
 VALUES (1,2), (3,4+4), (7,77.7);

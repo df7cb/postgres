@@ -187,6 +187,7 @@ static void processCASbits(int cas_bits, int location, const char *constrType,
 			   bool *deferrable, bool *initdeferred, bool *not_valid,
 			   bool *no_inherit, core_yyscan_t yyscanner);
 static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
+static Alias *makeSubqueryAlias(SelectStmt *subquery, int pos);
 
 %}
 
@@ -11302,29 +11303,18 @@ table_ref:	relation_expr opt_alias_clause
 					/*
 					 * The SQL spec does not permit a subselect
 					 * (<derived_table>) without an alias clause,
-					 * so we don't either.  This avoids the problem
-					 * of needing to invent a unique refname for it.
-					 * That could be surmounted if there's sufficient
-					 * popular demand, but for now let's just implement
-					 * the spec and see if anyone complains.
-					 * However, it does seem like a good idea to emit
-					 * an error message that's better than "syntax error".
+					 * but we aren't forced to it either. So support
+					 * omitting the explicit alias and create a unique
+					 * alias string, in case nothing was specified. This
+					 * also makes porting to PostgreSQL easier.
+					 *
+					 * To provide an unique alias, we use the parsed location
+					 * of the subquery to form an alias , e.g. in the format
+					 * *SUBQUERY*<location>
 					 */
 					if ($2 == NULL)
 					{
-						if (IsA($1, SelectStmt) &&
-							((SelectStmt *) $1)->valuesLists)
-							ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("VALUES in FROM must have an alias"),
-									 errhint("For example, FROM (VALUES ...) [AS] foo."),
-									 parser_errposition(@1)));
-						else
-							ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("subquery in FROM must have an alias"),
-									 errhint("For example, FROM (SELECT ...) [AS] foo."),
-									 parser_errposition(@1)));
+						n->alias = makeSubqueryAlias((SelectStmt *) $1, @1);
 					}
 					$$ = (Node *) n;
 				}
@@ -11337,19 +11327,7 @@ table_ref:	relation_expr opt_alias_clause
 					/* same comment as above */
 					if ($3 == NULL)
 					{
-						if (IsA($2, SelectStmt) &&
-							((SelectStmt *) $2)->valuesLists)
-							ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("VALUES in FROM must have an alias"),
-									 errhint("For example, FROM (VALUES ...) [AS] foo."),
-									 parser_errposition(@2)));
-						else
-							ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("subquery in FROM must have an alias"),
-									 errhint("For example, FROM (SELECT ...) [AS] foo."),
-									 parser_errposition(@2)));
+						n->alias = makeSubqueryAlias((SelectStmt *) $1, @1);
 					}
 					$$ = (Node *) n;
 				}
@@ -15605,6 +15583,21 @@ makeRecursiveViewSelect(char *relname, List *aliases, Node *query)
 	s->fromClause = list_make1(makeRangeVar(NULL, relname, -1));
 
 	return (Node *) s;
+}
+
+static Alias
+*makeSubqueryAlias(SelectStmt *subquery, int pos)
+{
+	char aliasname[NAMEDATALEN];
+
+	if (subquery->valuesLists != NIL) {
+		/* subquery describes SELECT ... FROM (VALUES(...)) */
+		snprintf(aliasname, NAMEDATALEN - 1, "*VALUES_%d*", pos);
+	} else {
+		snprintf(aliasname, NAMEDATALEN - 1, "*SUBQUERY_%d*", pos);
+	}
+
+	return makeAlias(aliasname, NIL);
 }
 
 /* parser_init()

@@ -120,6 +120,9 @@ select foo from (select 1) as foo;
 select foo from (select null) as foo;
 select foo from (select 'xyzzy',1,null) as foo;
 
+-- same above, without explicit alias
+select * from (select 'xyzzy',1,null);
+
 --
 -- Test VALUES lists
 --
@@ -138,6 +141,9 @@ select * from onek,
 select * from onek
     where (unique1,ten) in (values (1,1), (20,0), (99,9), (17,99))
     order by unique1;
+
+-- try VALUES without an explicit alias
+select * from (values (1,1), (20,0), (99,9), (17,99));
 
 -- VALUES is also legal as a standalone query or a set-operation member
 VALUES (1,2), (3,4+4), (7,77.7);
