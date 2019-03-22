@@ -140,7 +140,7 @@ static bool noclean = false;
 static bool do_sync = true;
 static bool sync_only = false;
 static bool show_setting = false;
-static bool data_checksums = false;
+static bool data_checksums = true;
 static char *xlog_dir = NULL;
 static char *str_wal_segment_size_mb = NULL;
 static int	wal_segment_size_mb;
@@ -2408,7 +2408,8 @@ usage(const char *progname)
 	printf(_("      --wal-segsize=SIZE    size of WAL segments, in megabytes\n"));
 	printf(_("\nLess commonly used options:\n"));
 	printf(_("  -d, --debug               generate lots of debugging output\n"));
-	printf(_("  -k, --data-checksums      use data page checksums\n"));
+	printf(_("  -k, --data-checksums      use data page checksums (default)\n"));
+	printf(_("  -K, --no-data-checksums   do not use data page checksums\n"));
 	printf(_("  -L DIRECTORY              where to find the input files\n"));
 	printf(_("  -n, --no-clean            do not clean up after errors\n"));
 	printf(_("  -N, --no-sync             do not wait for changes to be written safely to disk\n"));
@@ -3100,6 +3101,7 @@ main(int argc, char *argv[])
 		{"waldir", required_argument, NULL, 'X'},
 		{"wal-segsize", required_argument, NULL, 12},
 		{"data-checksums", no_argument, NULL, 'k'},
+		{"no-data-checksums", no_argument, NULL, 'K'},
 		{"allow-group-access", no_argument, NULL, 'g'},
 		{NULL, 0, NULL, 0}
 	};
@@ -3142,7 +3144,7 @@ main(int argc, char *argv[])
 
 	/* process command-line options */
 
-	while ((c = getopt_long(argc, argv, "dD:E:kL:nNU:WA:sST:X:g", long_options, &option_index)) != -1)
+	while ((c = getopt_long(argc, argv, "dD:E:kKL:nNU:WA:sST:X:g", long_options, &option_index)) != -1)
 	{
 		switch (c)
 		{
@@ -3193,6 +3195,9 @@ main(int argc, char *argv[])
 				break;
 			case 'k':
 				data_checksums = true;
+				break;
+			case 'K':
+				data_checksums = false;
 				break;
 			case 'L':
 				share_path = pg_strdup(optarg);

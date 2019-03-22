@@ -219,6 +219,17 @@ PostgreSQL documentation
         may incur a noticeable performance penalty. This option can only
         be set during initialization, and cannot be changed later. If
         set, checksums are calculated for all objects, in all databases.
+        The default is to use data checksums.
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry id="app-initdb-no-data-checksums" xreflabel="no data checksums">
+      <term><option>-K</option></term>
+      <term><option>--no-data-checksums</option></term>
+      <listitem>
+       <para>
+        Do not use checksums on data pages.
        </para>
       </listitem>
      </varlistentry>
