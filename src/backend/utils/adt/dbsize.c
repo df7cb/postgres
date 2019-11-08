@@ -12,19 +12,23 @@
 #include "postgres.h"
 
 #include <sys/stat.h>
+#include <sys/vfs.h>
 
 #include "access/htup_details.h"
 #include "access/relation.h"
 #include "catalog/catalog.h"
 #include "catalog/namespace.h"
 #include "catalog/pg_authid.h"
+#include "catalog/pg_type.h"
 #include "catalog/pg_tablespace.h"
 #include "commands/dbcommands.h"
 #include "commands/tablespace.h"
+#include "funcapi.h"
 #include "miscadmin.h"
 #include "storage/fd.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+#include "utils/memutils.h"
 #include "utils/numeric.h"
 #include "utils/rel.h"
 #include "utils/relfilenodemap.h"
@@ -282,6 +286,88 @@ pg_tablespace_size_name(PG_FUNCTION_ARGS)
 		PG_RETURN_NULL();
 
 	PG_RETURN_INT64(size);
+}
+
+
+/*
+ * Return disk stats of tablespace. Returns -1 if the tablespace directory
+ * cannot be found.
+ */
+static Datum
+get_tablespace_statfs(Oid tblspcOid)
+{
+	char		tblspcPath[MAXPGPATH];
+	AclResult	aclresult;
+	struct statfs fst;
+	TupleDesc	tupdesc;
+	Datum		values[6];
+	bool		isnull[6];
+	HeapTuple	tuple;
+
+	/*
+	 * User must be a member of pg_read_all_stats or have CREATE privilege for
+	 * target tablespace, either explicitly granted or implicitly because it
+	 * is default for current database.
+	 */
+	if (tblspcOid != MyDatabaseTableSpace &&
+		!is_member_of_role(GetUserId(), DEFAULT_ROLE_READ_ALL_STATS))
+	{
+		aclresult = pg_tablespace_aclcheck(tblspcOid, GetUserId(), ACL_CREATE);
+		if (aclresult != ACLCHECK_OK)
+			aclcheck_error(aclresult, OBJECT_TABLESPACE,
+						   get_tablespace_name(tblspcOid));
+	}
+
+	if (tblspcOid == DEFAULTTABLESPACE_OID)
+		snprintf(tblspcPath, MAXPGPATH, "base");
+	else if (tblspcOid == GLOBALTABLESPACE_OID)
+		snprintf(tblspcPath, MAXPGPATH, "global");
+	else
+		snprintf(tblspcPath, MAXPGPATH, "pg_tblspc/%u/%s", tblspcOid,
+				 TABLESPACE_VERSION_DIRECTORY);
+
+	if (statfs(tblspcPath, &fst) < 0)
+	{
+			ereport(ERROR,
+					(errcode_for_file_access(),
+					 errmsg("could not stat tablespace directory \"%s\": %m", tblspcPath)));
+	}
+
+	tupdesc = CreateTemplateTupleDesc(5);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "blocks", INT8OID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "bfree", INT8OID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 3, "bavail", INT8OID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 4, "files", INT8OID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 5, "ffree", INT8OID, -1, 0);
+	BlessTupleDesc(tupdesc);
+
+	memset(isnull, false, sizeof(isnull));
+	values[0] = Int64GetDatum((int64) fst.f_blocks);
+	values[1] = Int64GetDatum((int64) fst.f_bfree);
+	values[2] = Int64GetDatum((int64) fst.f_bavail);
+	values[3] = Int64GetDatum((int64) fst.f_files);
+	values[4] = Int64GetDatum((int64) fst.f_ffree);
+
+	tuple = heap_form_tuple(tupdesc, values, isnull);
+
+	PG_RETURN_DATUM(HeapTupleGetDatum(tuple));
+}
+
+Datum
+pg_tablespace_statfs_oid(PG_FUNCTION_ARGS)
+{
+	Oid			tblspcOid = PG_GETARG_OID(0);
+
+	PG_RETURN_DATUM(get_tablespace_statfs(tblspcOid));
+}
+
+Datum
+pg_tablespace_statfs_name(PG_FUNCTION_ARGS)
+{
+	Name		tblspcName = PG_GETARG_NAME(0);
+	Oid			tblspcOid = get_tablespace_oid(NameStr(*tblspcName), false);
+
+	PG_RETURN_DATUM(get_tablespace_statfs(tblspcOid));
 }
 
 
