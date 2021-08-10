@@ -310,7 +310,7 @@ get_tablespace_statfs(Oid tblspcOid)
 	 * is default for current database.
 	 */
 	if (tblspcOid != MyDatabaseTableSpace &&
-		!is_member_of_role(GetUserId(), DEFAULT_ROLE_READ_ALL_STATS))
+		!is_member_of_role(GetUserId(), ROLE_PG_READ_ALL_STATS))
 	{
 		aclresult = pg_tablespace_aclcheck(tblspcOid, GetUserId(), ACL_CREATE);
 		if (aclresult != ACLCHECK_OK)
