@@ -46,6 +46,13 @@ PostgreSQL documentation
     a slot without consuming it, use
    <link linkend="functions-replication"><function>pg_logical_slot_peek_changes</function></link>.
   </para>
+
+  <para>
+   In the absence of fatal errors, <application>pg_recvlogical</application>
+   will run until terminated by the <systemitem>SIGINT</systemitem>
+   (<keycombo action="simul"><keycap>Control</keycap><keycap>C</keycap></keycombo>)
+   or <systemitem>SIGTERM</systemitem> signal.
+  </para>
  </refsect1>
 
  <refsect1>
