@@ -4028,142 +4028,149 @@ ASSERT <replaceable class="parameter">condition</replaceable> <optional> , <repl
   <para>
    When a <application>PL/pgSQL</application> function is called as a
    trigger, several special variables are created automatically in the
-   top-level block. They are:
+   top-level block. They are listed in <xref linkend="trigger-tg-variables"/>.
+  </para>
 
-   <variablelist>
-    <varlistentry>
-     <term><varname>NEW</varname></term>
-     <listitem>
+  <table id="trigger-tg-variables">
+   <title><structname>TG_</structname> special trigger function variables</title>
+   <tgroup cols="1">
+    <thead>
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       Variable Type
+      </para>
       <para>
-       Data type <type>RECORD</type>; variable holding the new
-       database row for <command>INSERT</command>/<command>UPDATE</command> operations in row-level
+       Description
+      </para></entry>
+     </row>
+    </thead>
+
+    <tbody>
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>NEW</structfield> <type>record</type>
+      </para>
+      <para>
+       new database row for <command>INSERT</command>/<command>UPDATE</command> operations in row-level
        triggers. This variable is null in statement-level triggers
        and for <command>DELETE</command> operations.
-      </para>
-     </listitem>
-    </varlistentry>
+      </para></entry>
+     </row>
 
-    <varlistentry>
-     <term><varname>OLD</varname></term>
-     <listitem>
-      <para>
-       Data type <type>RECORD</type>; variable holding the old
-       database row for <command>UPDATE</command>/<command>DELETE</command> operations in row-level
-       triggers. This variable is null in statement-level triggers
-       and for <command>INSERT</command> operations.
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>OLD</structfield> <type>record</type>
       </para>
-     </listitem>
-    </varlistentry>
-
-    <varlistentry>
-     <term><varname>TG_NAME</varname></term>
-     <listitem>
       <para>
-       Data type <type>name</type>; variable that contains the name of the trigger actually
-       fired.
+       old database row for <command>UPDATE</command>/<command>DELETE</command> operations in row-level
+       triggers. This variable is null in statement-level triggers and for <command>INSERT</command>
+       operations.
+      </para></entry>
+     </row>
+
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>TG_NAME</structfield> <type>name</type>
       </para>
-     </listitem>
-    </varlistentry>
-
-    <varlistentry>
-     <term><varname>TG_WHEN</varname></term>
-     <listitem>
       <para>
-       Data type <type>text</type>; a string of
-       <literal>BEFORE</literal>, <literal>AFTER</literal>, or
+       name of the trigger fired.
+      </para></entry>
+     </row>
+
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>TG_WHEN</structfield> <type>text</type>
+      </para>
+      <para>
+       string <literal>BEFORE</literal>, <literal>AFTER</literal>, or
        <literal>INSTEAD OF</literal>, depending on the trigger's definition.
-      </para>
-     </listitem>
-    </varlistentry>
+      </para></entry>
+     </row>
 
-    <varlistentry>
-     <term><varname>TG_LEVEL</varname></term>
-     <listitem>
-      <para>
-       Data type <type>text</type>; a string of either
-       <literal>ROW</literal> or <literal>STATEMENT</literal>
-       depending on the trigger's definition.
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>TG_LEVEL</structfield> <type>text</type>
       </para>
-     </listitem>
-    </varlistentry>
-
-    <varlistentry>
-     <term><varname>TG_OP</varname></term>
-     <listitem>
       <para>
-       Data type <type>text</type>; a string of
-       <literal>INSERT</literal>, <literal>UPDATE</literal>,
+       string <literal>ROW</literal> or <literal>STATEMENT</literal> depending
+       on the trigger's definition.
+      </para></entry>
+     </row>
+
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>TG_OP</structfield> <type>text</type>
+      </para>
+      <para>
+       string <literal>INSERT</literal>, <literal>UPDATE</literal>,
        <literal>DELETE</literal>, or <literal>TRUNCATE</literal>
        telling for which operation the trigger was fired.
-      </para>
-     </listitem>
-    </varlistentry>
+      </para></entry>
+     </row>
 
-    <varlistentry>
-     <term><varname>TG_RELID</varname></term>
-     <listitem>
-      <para>
-       Data type <type>oid</type>; the object ID of the table that caused the
-       trigger invocation.
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>TG_RELID</structfield> <type>oid</type>
+       (references <link linkend="catalog-pg-class"><structname>pg_class</structname></link>.<structfield>oid</structfield>)
       </para>
-     </listitem>
-    </varlistentry>
+      <para>
+       object ID of the table that caused the trigger invocation.
+      </para></entry>
+     </row>
 
-    <varlistentry>
-     <term><varname>TG_RELNAME</varname></term>
-     <listitem>
-      <para>
-       Data type <type>name</type>; the name of the table that caused the trigger
-       invocation. This is now deprecated, and could disappear in a future
-       release. Use <literal>TG_TABLE_NAME</literal> instead.
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>TG_RELNAME</structfield> <type>name</type>
       </para>
-     </listitem>
-    </varlistentry>
+      <para>
+       name of the table that caused the trigger invocation. This is now
+       deprecated, and could disappear in a future release. Use
+       <literal>TG_TABLE_NAME</literal> instead.
+      </para></entry>
+     </row>
 
-    <varlistentry>
-     <term><varname>TG_TABLE_NAME</varname></term>
-     <listitem>
-      <para>
-       Data type <type>name</type>; the name of the table that
-       caused the trigger invocation.
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>TG_TABLE_NAME</structfield> <type>name</type>
       </para>
-     </listitem>
-    </varlistentry>
+      <para>
+       name of the table that caused the trigger invocation.
+      </para></entry>
+     </row>
 
-    <varlistentry>
-     <term><varname>TG_TABLE_SCHEMA</varname></term>
-     <listitem>
-      <para>
-       Data type <type>name</type>; the name of the schema of the
-       table that caused the trigger invocation.
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>TG_TABLE_SCHEMA</structfield> <type>name</type>
       </para>
-     </listitem>
-    </varlistentry>
+      <para>
+       name of the schema of the table that caused the trigger invocation.
+      </para></entry>
+     </row>
 
-    <varlistentry>
-     <term><varname>TG_NARGS</varname></term>
-     <listitem>
-      <para>
-       Data type <type>integer</type>; the number of arguments given to the trigger
-       function in the <command>CREATE TRIGGER</command> statement.
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>TG_NARGS</structfield> <type>integer</type>
       </para>
-     </listitem>
-    </varlistentry>
+      <para>
+       number of arguments given to the trigger function in the
+       <command>CREATE TRIGGER</command> statement.
+      </para></entry>
+     </row>
 
-    <varlistentry>
-     <term><varname>TG_ARGV[]</varname></term>
-     <listitem>
-      <para>
-       Data type array of <type>text</type>; the arguments from
-       the <command>CREATE TRIGGER</command> statement.
-       The index counts from 0. Invalid
-       indexes (less than 0 or greater than or equal to <varname>tg_nargs</varname>)
-       result in a null value.
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>TG_ARGV</structfield> <type>text[]</type>
       </para>
-     </listitem>
-    </varlistentry>
-   </variablelist>
-  </para>
+      <para>
+       arguments from the <command>CREATE TRIGGER</command> statement. The
+       index counts from 0. Invalid indexes (less than 0 or greater than or
+       equal to <varname>tg_nargs</varname>) result in a null value.
+      </para></entry>
+     </row>
+
+    </tbody>
+   </tgroup>
+  </table>
 
    <para>
     A trigger function must return either <symbol>NULL</symbol> or a
