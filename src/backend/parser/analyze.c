@@ -56,6 +56,8 @@
 #include "utils/syscache.h"
 
 
+/* Hook for plugins to get control before parse analysis */
+pre_parse_analyze_hook_type pre_parse_analyze_hook = NULL;
 /* Hook for plugins to get control at end of parse analysis */
 post_parse_analyze_hook_type post_parse_analyze_hook = NULL;
 
@@ -120,6 +122,9 @@ parse_analyze_fixedparams(RawStmt *parseTree, const char *sourceText,
 		setup_parse_fixed_parameters(pstate, paramTypes, numParams);
 
 	pstate->p_queryEnv = queryEnv;
+
+	if (pre_parse_analyze_hook)
+		(*pre_parse_analyze_hook) (parseTree);
 
 	query = transformTopLevelStmt(pstate, parseTree);
 
