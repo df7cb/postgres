@@ -241,6 +241,37 @@ SELECT calls, query FROM pg_stat_statements ORDER BY query COLLATE "C";
 (12 rows)
 
 DROP TABLE pgss_a, pgss_b CASCADE;
+-- temp tables
+SELECT pg_stat_statements_reset() IS NOT NULL AS t;
+ t 
+---
+ t
+(1 row)
+
+BEGIN;
+  CREATE TEMP TABLE temp_t (id int) ON COMMIT DROP;
+  SELECT * FROM temp_t;
+ id 
+----
+(0 rows)
+
+COMMIT;
+BEGIN;
+  CREATE TEMP TABLE temp_t (id int) ON COMMIT DROP;
+  SELECT * FROM temp_t;
+ id 
+----
+(0 rows)
+
+COMMIT;
+SELECT calls, query FROM pg_stat_statements ORDER BY query COLLATE "C"; -- one query with two calls
+ calls |                                 query                                  
+-------+------------------------------------------------------------------------
+     2 | SELECT * FROM temp_t
+     0 | SELECT calls, query FROM pg_stat_statements ORDER BY query COLLATE "C"
+     1 | SELECT pg_stat_statements_reset() IS NOT NULL AS t
+(3 rows)
+
 --
 -- access to pg_stat_statements_info view
 --

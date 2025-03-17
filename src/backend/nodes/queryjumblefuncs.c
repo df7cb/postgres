@@ -33,6 +33,7 @@
 #include "postgres.h"
 
 #include "access/transam.h"
+#include "catalog/namespace.h"
 #include "catalog/pg_proc.h"
 #include "common/hashfn.h"
 #include "miscadmin.h"
@@ -40,6 +41,7 @@
 #include "nodes/queryjumble.h"
 #include "utils/lsyscache.h"
 #include "parser/scansup.h"
+#include "utils/lsyscache.h"
 
 #define JUMBLE_SIZE				1024	/* query serialization buffer size */
 
@@ -67,6 +69,7 @@ static void _jumbleElements(JumbleState *jstate, List *elements);
 static void _jumbleA_Const(JumbleState *jstate, Node *node);
 static void _jumbleList(JumbleState *jstate, Node *node);
 static void _jumbleVariableSetStmt(JumbleState *jstate, Node *node);
+static void _jumbleRangeTblEntry(JumbleState *jstate, Node *node);
 
 /*
  * Given a possibly multi-statement source string, confine our attention to the
@@ -512,4 +515,40 @@ _jumbleVariableSetStmt(JumbleState *jstate, Node *node)
 		JUMBLE_NODE(args);
 	JUMBLE_FIELD(is_local);
 	JUMBLE_LOCATION(location);
+}
+
+/*
+ * RangeTblEntry is jumbled exactly like the automatic jumbling would do, but
+ * with using the name of temp tables instead of OID. Since temp tables have to
+ * be recreated for each session (or even transaction), their OID is useless
+ * for fingerprinting.
+ */
+static void
+_jumbleRangeTblEntry(JumbleState *jstate, Node *node)
+{
+	RangeTblEntry *expr = (RangeTblEntry *) node;
+	char	   *rel_name;
+
+	JUMBLE_FIELD(rtekind);
+
+	if (expr->rtekind == RTE_RELATION && isAnyTempNamespace(get_rel_namespace(expr->relid)))
+	{
+		rel_name = get_rel_name(expr->relid);
+		AppendJumble(jstate, (const unsigned char *)"pg_temp", sizeof("pg_temp"));
+		AppendJumble(jstate, (const unsigned char *)rel_name, strlen(rel_name));
+	}
+	else
+		JUMBLE_FIELD(relid);
+
+	JUMBLE_FIELD(inh);
+	JUMBLE_NODE(tablesample);
+	JUMBLE_NODE(subquery);
+	JUMBLE_FIELD(jointype);
+	JUMBLE_NODE(functions);
+	JUMBLE_FIELD(funcordinality);
+	JUMBLE_NODE(tablefunc);
+	JUMBLE_NODE(values_lists);
+	JUMBLE_STRING(ctename);
+	JUMBLE_FIELD(ctelevelsup);
+	JUMBLE_STRING(enrname);
 }

@@ -1019,6 +1019,12 @@ typedef struct PartitionCmd
  *	  rewriter to implement security-barrier views and/or row-level security.
  *	  Note that the planner turns each boolean expression into an implicitly
  *	  AND'ed sublist, as is its usual habit with qualification expressions.
+ *
+ *	  RangeTblEntry uses a custom query jumble function to hash temp tables by
+ *	  name instead of by OID. The query_jumble_ignore markers on struct members
+ *	  are still kept for documentation; if the custom_query_jumble attribute is
+ *	  dropped, the automatically generated _jumbleRangeTblEntry function should
+ *	  be identical except for the relid.
  *--------------------
  */
 typedef enum RTEKind
@@ -1039,7 +1045,7 @@ typedef enum RTEKind
 
 typedef struct RangeTblEntry
 {
-	pg_node_attr(custom_read_write)
+	pg_node_attr(custom_read_write, custom_query_jumble)
 
 	NodeTag		type;
 

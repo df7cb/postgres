@@ -90,6 +90,18 @@ SELECT calls, query FROM pg_stat_statements ORDER BY query COLLATE "C";
 
 DROP TABLE pgss_a, pgss_b CASCADE;
 
+-- temp tables
+SELECT pg_stat_statements_reset() IS NOT NULL AS t;
+BEGIN;
+  CREATE TEMP TABLE temp_t (id int) ON COMMIT DROP;
+  SELECT * FROM temp_t;
+COMMIT;
+BEGIN;
+  CREATE TEMP TABLE temp_t (id int) ON COMMIT DROP;
+  SELECT * FROM temp_t;
+COMMIT;
+SELECT calls, query FROM pg_stat_statements ORDER BY query COLLATE "C"; -- one query with two calls
+
 --
 -- access to pg_stat_statements_info view
 --
