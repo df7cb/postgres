@@ -6,6 +6,7 @@ psql_sources = files(
   'copy.c',
   'crosstabview.c',
   'describe.c',
+  'gupdate.c',
   'help.c',
   'input.c',
   'large_obj.c',

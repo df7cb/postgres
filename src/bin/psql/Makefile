@@ -31,6 +31,7 @@ OBJS = \
 	copy.o \
 	crosstabview.o \
 	describe.o \
+	gupdate.o \
 	help.o \
 	input.o \
 	large_obj.o \

@@ -34,6 +34,7 @@
 #include "fe_utils/cancel.h"
 #include "fe_utils/print.h"
 #include "fe_utils/string_utils.h"
+#include "gupdate.h"
 #include "help.h"
 #include "input.h"
 #include "large_obj.h"
@@ -108,6 +109,8 @@ static backslashResult exec_command_getenv(PsqlScanState scan_state, bool active
 static backslashResult exec_command_gexec(PsqlScanState scan_state, bool active_branch);
 static backslashResult exec_command_getresults(PsqlScanState scan_state, bool active_branch);
 static backslashResult exec_command_gset(PsqlScanState scan_state, bool active_branch);
+static backslashResult exec_command_gupdate(PsqlScanState scan_state, bool active_branch,
+											PQExpBuffer query_buf, PQExpBuffer previous_buf);
 static backslashResult exec_command_help(PsqlScanState scan_state, bool active_branch);
 static backslashResult exec_command_html(PsqlScanState scan_state, bool active_branch);
 static backslashResult exec_command_include(PsqlScanState scan_state, bool active_branch,
@@ -382,6 +385,9 @@ exec_command(const char *cmd,
 		status = exec_command_gexec(scan_state, active_branch);
 	else if (strcmp(cmd, "gset") == 0)
 		status = exec_command_gset(scan_state, active_branch);
+	else if (strcmp(cmd, "gupdate") == 0)
+		status = exec_command_gupdate(scan_state, active_branch,
+									  query_buf, previous_buf);
 	else if (strcmp(cmd, "h") == 0 || strcmp(cmd, "help") == 0)
 		status = exec_command_help(scan_state, active_branch);
 	else if (strcmp(cmd, "H") == 0 || strcmp(cmd, "html") == 0)
@@ -1986,6 +1992,53 @@ exec_command_gset(PsqlScanState scan_state, bool active_branch)
 		}
 		/* gset_prefix is freed later */
 		status = PSQL_CMD_SEND;
+	}
+	else
+		ignore_slash_options(scan_state);
+
+	return status;
+}
+
+/*
+ * \gupdate -- edit the current query buffer, or edit a file and
+ * make it the query buffer
+ */
+static backslashResult
+exec_command_gupdate(PsqlScanState scan_state, bool active_branch,
+					 PQExpBuffer query_buf, PQExpBuffer previous_buf)
+{
+	backslashResult status = PSQL_CMD_SKIP_LINE;
+
+	if (process_command_gupdate_options(scan_state, active_branch))
+		status = PSQL_CMD_ERROR;
+
+	if (active_branch)
+	{
+		if (!query_buf)
+		{
+			pg_log_error("no query buffer");
+			status = PSQL_CMD_ERROR;
+		}
+		else
+		{
+			bool		query_ok;
+
+			copy_previous_query(query_buf, previous_buf);
+
+			query_ok = gupdate_create_update_query(query_buf);
+
+			if (query_ok && do_edit(NULL, query_buf, -1, true, NULL))
+				status = PSQL_CMD_NEWEDIT;
+			else
+				status = PSQL_CMD_ERROR;
+
+			/*
+			 * On error while editing or if specifying an incorrect line
+			 * number, reset the query buffer.
+			 */
+			if (status == PSQL_CMD_ERROR)
+				resetPQExpBuffer(query_buf);
+		}
 	}
 	else
 		ignore_slash_options(scan_state);
